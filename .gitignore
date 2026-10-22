@@ -1,0 +1,23 @@
+
+# Python files
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+secrets.*
+*token*
+
+# Local databases and generated data
+*.sqlite
+*.sqlite3
+*.db
+
+# Local backups — keep these on your computer
+app1.py
+app2.py
+app_backup_before_led.py
