@@ -3,3 +3,4 @@ psutil>=5.9,<8.0
 pyserial>=3.5,<4.0
 winotify>=1.1.0; platform_system == "Windows"
 requests>=2.31,<3.0
+gunicorn>=22.0,<24.0
