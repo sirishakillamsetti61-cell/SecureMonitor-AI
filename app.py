@@ -33,6 +33,48 @@ except ImportError:
 
 app = Flask(__name__)
 
+# Safety boundary for endpoints that change simulation state or control a serial port.
+# These controls are intended for the local dashboard only. If HOST is configured
+# to listen on a non-loopback interface (for example, 0.0.0.0 on a public host),
+# all control endpoints fail closed instead of becoming remotely callable.
+import ipaddress
+from functools import wraps
+
+_CONTROL_PATHS = {
+    "/api/test-risk",
+    "/api/mode",
+    "/api/serial/connect",
+    "/api/serial/disconnect",
+}
+
+def _is_loopback_address(value):
+    try:
+        return ipaddress.ip_address(value).is_loopback
+    except (TypeError, ValueError):
+        return False
+
+@app.before_request
+def protect_local_control_endpoints():
+    if request.path not in _CONTROL_PATHS:
+        return None
+
+    configured_host = os.environ.get("HOST", "127.0.0.1").strip().lower()
+    # Explicitly refuse control operations when the server is exposed on a
+    # network interface. This avoids treating a reverse-proxy deployment as local.
+    if configured_host not in {"127.0.0.1", "localhost", "::1"}:
+        return jsonify({
+            "error": "Control endpoints are disabled when HOST is exposed beyond localhost."
+        }), 403
+
+    if not _is_loopback_address(request.remote_addr):
+        return jsonify({"error": "This control endpoint is available only from this computer."}), 403
+
+    # Require JSON for state-changing requests, reducing accidental cross-site form posts.
+    if request.method == "POST" and not request.is_json:
+        return jsonify({"error": "Content-Type must be application/json."}), 415
+
+    return None
+
 # This is a LOCAL DEMONSTRATION. It generates simulated sensor readings.
 # It does not scan Windows for malware and is not connected to Cirkit/ESP32 yet.
 state_lock = threading.Lock()
